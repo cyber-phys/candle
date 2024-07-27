@@ -481,6 +481,36 @@ struct Args {
     verbose: bool,
 }
 
+fn select_input_device(host: &cpal::Host) -> Option<cpal::Device> {
+    println!("Available input devices:");
+    let devices = host.input_devices().expect("Failed to get input devices");
+    let mut device_list: Vec<_> = devices.collect();
+
+    for (i, device) in device_list.iter().enumerate() {
+        println!(
+            "{}. {}",
+            i + 1,
+            device
+                .name()
+                .unwrap_or_else(|_| "Unknown device".to_string())
+        );
+    }
+
+    println!("Select a device by number:");
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line");
+    let selection: usize = input.trim().parse().expect("Please enter a number");
+
+    if selection > 0 && selection <= device_list.len() {
+        Some(device_list.remove(selection - 1))
+    } else {
+        println!("Invalid selection. Using default device.");
+        None
+    }
+}
+
 pub fn main() -> Result<()> {
     use tracing_chrome::ChromeLayerBuilder;
     use tracing_subscriber::prelude::*;
@@ -565,14 +595,26 @@ pub fn main() -> Result<()> {
 
     // Set up the input device and stream with the default input config.
     let host = cpal::default_host();
-    let _device = "default";
-    let _device = if _device == "default" {
+    // let _device = "default";
+    // let _device = if _device == "default" {
+    //     host.default_input_device()
+    // } else {
+    //     host.input_devices()?
+    //         .find(|x| x.name().map(|y| y == _device).unwrap_or(false))
+    // }
+    // .expect("failed to find input device");
+
+    let _device = select_input_device(&host).unwrap_or_else(|| {
         host.default_input_device()
-    } else {
-        host.input_devices()?
-            .find(|x| x.name().map(|y| y == _device).unwrap_or(false))
-    }
-    .expect("failed to find input device");
+            .expect("Failed to get default input device")
+    });
+
+    println!(
+        "Using input device: {}",
+        _device
+            .name()
+            .unwrap_or_else(|_| "Unknown device".to_string())
+    );
 
     let _config = _device
         .default_input_config()
